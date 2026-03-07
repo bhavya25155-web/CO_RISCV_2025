@@ -337,3 +337,93 @@ def create_labels_and_instructions(cleaned_lines):
             temp_pc+=4
     return label,all_instrs
 
+
+def get_instruction_type(instr):
+    instr=instr.lower()
+    
+    if instr in R_type_table:
+        return 0
+
+    elif instr in I_type_table:
+        return 1
+
+    elif instr in S_type_table:
+        return 2
+
+    elif instr in B_type_table:
+        return 3
+
+    elif instr in U_type_table:
+        return 4
+
+    elif instr in J_type_table:
+        return 5
+
+    else:
+        return -1
+
+
+def main_encoder(line):
+    parts=line.replace(",", " ").split()
+
+    if len(parts) == 0:
+        raise ValueError("Empty instruction")
+
+    check_registers(parts)
+
+    instr=parts[0]
+    inst_type=get_instruction_type(instr)
+
+    match inst_type:
+        case 0:
+            return encode_R_type(parts)
+        case 1:
+            return encode_I_type(parts)
+        case 2:
+            return encode_S_type(parts)
+        case 3:
+            return encode_B_type(parts)
+        case 4:
+            return encode_U_type(parts)
+        case 5:
+            return encode_J_type(parts)
+        case _:
+            raise ValueError("Invalid instruction mnemonic: " + instr)
+
+
+global pc
+pc=0
+label={}
+all_instrs=[]
+
+try:
+    fin=open("input_file.txt", "r")
+    lines=fin.readlines()
+    fin.close()
+
+    cleaned_lines=[]
+    for line in lines:
+        line=line.strip()
+        if line != "":
+            cleaned_lines.append(line)
+
+    label, all_instrs=create_labels_and_instructions(cleaned_lines)
+
+    if len(all_instrs) == 0:
+        raise ValueError("File is empty")
+    
+    if "beq zero, zero, 0" not in all_instrs or "beq zero, zero,0" not in all_instrs:
+        raise ValueError("No Virtual Halt instruction found")
+
+    fout=open("output_file.txt", "w")
+
+    pc=0
+    for instr in all_instrs:
+        binary=main_encoder(instr)
+        fout.write(binary + "\n")
+        pc += 4
+
+    fout.close()
+
+except Exception as e:
+    print("Error at line", pc // 4 + 1, ":", e)
