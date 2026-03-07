@@ -112,3 +112,75 @@ registers = {
     "x19": "10011", "x20": "10100", "x21": "10101", "x22": "10110", "x23": "10111",
     "x24": "11000", "x25": "11001", "x26": "11010", "x27": "11011", "x28": "11100",
     "x29": "11101", "x30": "11110", "x31": "11111"}
+
+def immediate(x, bits):
+    if bits<=0:
+        return "error"
+    x=x.strip()
+    
+    # check sign
+    is_negative=False
+    if x[0]=="-":
+        is_negative=True
+        x=x[1:]   # remove '-'
+    if x=="" or not x.isdigit():
+        return "error"
+    y=int(x)
+    
+    # decimal→binary
+    binary_int=0
+    place=1
+    if y==0:
+        binary_int=0
+    else:
+        while y!=0:
+            remainder=y%2
+            binary_int=remainder*place+binary_int
+            place=place*10
+            y=y//2
+            
+    # integer binary to string
+    binary=str(binary_int)
+    
+    # check for overflow
+    if len(binary)>bits:
+        return "error"
+        
+    # extend bits
+    while len(binary)<bits:
+        binary="0"+binary
+        
+    # positive number
+    if not is_negative:
+        return binary
+        
+    # negative number
+    #one's complement
+    flipped=""
+    i=0
+    while i<bits:
+        if binary[i]=="0":
+            flipped+="1"
+        else:
+            flipped+="0"
+        i+=1
+        
+    # add 1
+    result=list(flipped)
+    carry=1
+    i=bits - 1
+    while i>=0 and carry==1:
+        if result[i]=="0":
+            result[i]="1"
+            carry=0
+        else:
+            result[i]="0"
+        i -=1
+        
+    #final string using for loop
+    final_string=""
+    for bit in result:
+        final_string=final_string+bit
+    return final_string
+
+
