@@ -292,3 +292,48 @@ def encode_J_type(parts):
         raise ValueError("Illegal Immediate")
 
     return imm_bin[0]+imm_bin[10:20]+imm_bin[9]+imm_bin[1:9]+registers[rd]+opcode
+
+def check_registers(parts):
+    i=1
+    while i<len(parts):
+        p=parts[i]
+        if "(" in p:
+            r=p[p.find("(")+1:p.find(")")]
+            if r not in registers:
+                raise ValueError("Invalid register "+r)
+        else:
+            if p in registers:
+                i+=1
+                continue
+            if p in label:
+                i+=1
+                continue
+            if p.startswith("-"):
+                if p[1:].isdigit():
+                    i+=1
+                    continue
+            elif p.isdigit():
+                i+=1
+                continue
+            raise ValueError("Invalid register "+p)
+        i+=1
+
+def create_labels_and_instructions(cleaned_lines):
+    label={}
+    all_instrs=[]
+    temp_pc=0
+    for line in cleaned_lines:
+        instr_body=line
+        if ":" in line:
+            lbl_name=line[:line.index(":")].strip()
+            if lbl_name=="":
+                raise ValueError("Empty label")
+            if not lbl_name[0].isalpha():
+                raise ValueError("Label must start with a letter")
+            label[lbl_name]=temp_pc
+            instr_body=line[line.index(":")+1:].strip()
+        if instr_body!="":
+            all_instrs.append(instr_body)
+            temp_pc+=4
+    return label,all_instrs
+
