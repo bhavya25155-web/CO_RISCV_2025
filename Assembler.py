@@ -184,3 +184,111 @@ def immediate(x, bits):
     return final_string
 
 
+def encode_R_type(parts):
+    instr, rd, rs1, rs2=parts
+    entry=R_type_table[instr]
+
+    funct7=entry["funct7"]
+    funct3=entry["funct3"]
+    opcode=entry["opcode"]
+
+    return funct7+registers[rs2]+registers[rs1]+funct3+registers[rd]+opcode
+
+
+def encode_I_type(parts):
+    instr=parts[0]
+    entry=I_type_table[instr]
+
+    funct3=entry["funct3"]
+    opcode=entry["opcode"]
+
+    if instr == "lw":
+        rd=parts[1]
+        offset, rs1=parts[2].split("(")
+        rs1=rs1.replace(")", "")
+    else:
+        rd=parts[1]
+        rs1=parts[2]
+        offset=parts[3]
+
+    imm_bin=immediate(offset, 12)
+
+    if imm_bin == "error":
+        raise ValueError("Illegal Immediate")
+
+    return imm_bin+registers[rs1]+funct3+registers[rd]+opcode
+
+
+def encode_S_type(parts):
+    instr=parts[0]
+    entry=S_type_table[instr]
+
+    funct3=entry["funct3"]
+    opcode=entry["opcode"]
+
+    rs2=parts[1]
+    offset, rs1=parts[2].split("(")
+    rs1=rs1.replace(")", "")
+
+    imm_bin=immediate(offset, 12)
+
+    if imm_bin == "error":
+        raise ValueError("Illegal Immediate")
+
+    imm_11_5=imm_bin[:7]
+    imm_4_0=imm_bin[7:]
+
+    return imm_11_5+registers[rs2]+registers[rs1]+funct3+imm_4_0+opcode
+
+
+def encode_B_type(parts):
+    instr, rs1, rs2, imm=parts
+    entry=B_type_table[instr]
+
+    funct3=entry["funct3"]
+    opcode=entry["opcode"]
+
+    if imm in label:
+        offset=label[imm] - pc
+    else:
+        offset=int(imm, 0)
+
+    imm_bin=immediate(str(offset), 13)
+
+    if imm_bin == "error":
+        raise ValueError("Illegal Immediate")
+
+    return imm_bin[0]+imm_bin[2:8]+registers[rs2]+registers[rs1]+funct3+imm_bin[8:12]+imm_bin[1]+opcode
+
+
+def encode_U_type(parts):
+    instr, rd, imm=parts
+    entry=U_type_table[instr]
+
+    opcode=entry["opcode"]
+
+    imm_bin=immediate(imm, 20)
+
+    if imm_bin == "error":
+        raise ValueError("Illegal Immediate")
+
+    return imm_bin+registers[rd]+opcode
+
+
+def encode_J_type(parts):
+    instr, rd, imm=parts
+    entry=J_type_table[instr]
+
+    opcode=entry["opcode"]
+
+    if imm in label:
+        offset=label[imm] - pc
+    else:
+        offset=int(imm, 0)
+
+    imm_bin=immediate(str(offset), 21)
+
+    if imm_bin == "error":
+        raise ValueError("Illegal Immediate")
+
+    return imm_bin[0]+imm_bin[10:20]+imm_bin[9]+imm_bin[1:9]+registers[rd]+opcode
