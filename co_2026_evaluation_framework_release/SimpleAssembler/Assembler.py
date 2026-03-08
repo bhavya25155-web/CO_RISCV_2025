@@ -1,3 +1,4 @@
+import sys
 #R-type funct7 | rs2 | rs1 | funct3 | rd | opcode
     
 R_type_table = {
@@ -395,9 +396,10 @@ global pc
 pc=0
 label={}
 all_instrs=[]
-
+input_file=sys.argv[1]
+output_file=sys.argv[2]
 try:
-    fin=open("input_file.txt", "r")
+    fin=open(input_file, "r")
     lines=fin.readlines()
     fin.close()
 
@@ -411,11 +413,12 @@ try:
 
     if len(all_instrs) == 0:
         raise ValueError("File is empty")
-    
-    if "beq zero, zero, 0" not in all_instrs or "beq zero, zero,0" not in all_instrs:
+    normalized = [instr.replace(" ", "") for instr in all_instrs]
+    if "beqzero,zero,0" not in normalized:
         raise ValueError("No Virtual Halt instruction found")
 
-    fout=open("output_file.txt", "w")
+
+    fout=open(output_file, "w")
 
     pc=0
     for instr in all_instrs:
