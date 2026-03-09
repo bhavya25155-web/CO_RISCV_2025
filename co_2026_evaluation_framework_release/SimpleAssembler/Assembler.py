@@ -415,7 +415,9 @@ try:
         raise ValueError("File is empty")
     normalized = [instr.replace(" ", "") for instr in all_instrs]
     if "beqzero,zero,0" not in normalized:
-        raise ValueError("No Virtual Halt instruction found")
+        raise ValueError("No Virtual Halt instruction found.")
+    elif normalized[-1]!="beqzero,zero,0" :
+        raise ValueError("Virtual halt not present as the last instruction.")
 
 
     fout=open(output_file, "w")
