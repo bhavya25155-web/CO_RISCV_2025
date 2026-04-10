@@ -123,5 +123,46 @@ def i_type(raw_bits,op,rd,rs1):
         return 
     current_pc+=4
 
+def b_type(raw_bits, rs1, rs2):
 
+    global current_pc
+
+    # branches have weird scattered immediate format
+    imm = sign_extend(((raw_bits >> 31) << 12) | (((raw_bits >> 7) & 1) << 11) |
+                       (((raw_bits >> 25) & 0x3f) << 5) | (((raw_bits >> 8) & 0xf) << 1), 13)
+    val1, val2 = registers[rs1], registers[rs2]
+    f3 = (raw_bits >> 12) & 0x7
+
+    is_taken = False
+    if f3 == 0: 
+        is_taken = (val1 == val2)
+
+    elif f3 == 1: 
+        is_taken = (val1 != val2)
+
+    elif f3 == 4: 
+        is_taken = force_signed(val1) < force_signed(val2)
+
+    elif f3 == 5: 
+        is_taken = force_signed(val1) >= force_signed(val2)
+
+    elif f3 == 6:
+        is_taken = (val1 & 0xFFFFFFFF) < (val2 & 0xFFFFFFFF)
+
+    elif f3 == 7:
+        is_taken = (val1 & 0xFFFFFFFF) >= (val2 & 0xFFFFFFFF)
+        
+    current_pc = (current_pc + imm) & 0xFFFFFFFF if is_taken else current_pc + 4
+
+def check_for_halt(raw_bits):
+
+    # treating 'beq x0, x0, 0' as the end of the program
+    return raw_bits == 0x00000063
+
+def save_state():
+
+    # saves current PC and all regs in binary for the trace file
+    row = f"0b{current_pc & 0xFFFFFFFF:032b} "
+    row += " ".join(f"0b{(registers[i] if i != 0 else 0):032b}" for i in range(32))
+    history_log.append(row + " ")
 
