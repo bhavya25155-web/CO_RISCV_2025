@@ -166,3 +166,78 @@ def save_state():
     row += " ".join(f"0b{(registers[i] if i != 0 else 0):032b}" for i in range(32))
     history_log.append(row + " ")
 
+def start_engine(output_file):
+
+    global current_pc
+
+    # limit to 10M cycles so we don't loop forever on bad code
+    for _ in range(10_000_000):
+        if current_pc%4!=0:
+            print(f"Error: unaligned PC 0x{current_pc:08X}",file=sys.stderr)
+            sys.exit(1)
+        pc_idx=current_pc>>2
+        if pc_idx>=len(instructions):
+            print(f"PC out of bounds: 0x{current_pc:08X}",file=sys.stderr)
+            sys.exit(1)
+
+        cmd=instructions[pc_idx]
+
+        if check_for_halt(cmd):
+            save_state()
+            # final memory dump
+            for i in range(32):
+                real_addr=0x00010000+(i*4)
+                history_log.append(f"0x{real_addr:08X}:0b{data_section[i]:032b}")
+            break
+
+        # Decode basic fields
+        opcode=cmd&0x7F
+        rd_idx=(cmd>>7)&0x1F
+        rs1_idx=(cmd>>15)&0x1F
+        rs2_idx=(cmd>>20)&0x1F
+
+        if opcode==0x33: 
+            r_type(cmd,rd_idx,rs1_idx,rs2_idx)
+
+        elif opcode in (0x03,0x13,0x67): 
+            i_type(cmd,opcode,rd_idx,rs1_idx)
+
+        elif opcode==0x23: # sw
+            s_imm=sign_extend(((cmd>>25)<<5)|((cmd>>7)&0x1F),12)
+            m_target,m_idx=resolve_address(registers[rs1_idx]+s_imm,"store")
+            m_target[m_idx]=registers[rs2_idx]&0xFFFFFFFF
+            current_pc+=4
+
+        elif opcode==0x63: 
+            b_type(cmd,rs1_idx,rs2_idx)
+
+        elif opcode in (0x37,0x17): # lui/auipc
+            u_imm=cmd&0xFFFFF000
+            if rd_idx!=0:
+                if opcode==0x37:
+                    registers[rd_idx] =u_imm&0xFFFFFFFF
+                else:
+                    registers[rd_idx]=(current_pc+u_imm)&0xFFFFFFFF
+            current_pc+=4
+
+        elif opcode==0x6F: # jal
+            j_imm=sign_extend(((cmd>>31)<<20)|(((cmd>>12)&0xff)<<12)|
+                               (((cmd>>20)&1)<<11)|(((cmd>>21)&0x3ff)<<1),21)
+            if rd_idx!=0: 
+                registers[rd_idx]=(current_pc+4)&0xFFFFFFFF
+            current_pc=(current_pc+j_imm)&0xFFFFFFFF
+
+        registers[0]=0 # x0 hardwired to 0
+        save_state()
+
+    with open(output_file,'w') as f:
+        f.write('\n'.join(history_log) + '\n')
+
+
+with open(sys.argv[1],'r') as f:
+    # Load binary strings as integers
+    for line in f:
+        if line.strip():
+            instructions.append(int(line.strip(),2))
+        
+start_engine(sys.argv[2])
